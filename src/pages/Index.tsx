@@ -11,13 +11,13 @@ import { useVideoStore } from '@/hooks/useVideoStore';
 import { extractAudioFromVideo } from '@/lib/ffmpeg';
 import { uploadAudioToStorage, processVideoSummary, parseTimestamp } from '@/lib/videoProcessor';
 import { toast } from 'sonner';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
   
   const {
