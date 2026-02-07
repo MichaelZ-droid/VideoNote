@@ -12,8 +12,6 @@ interface SummaryItem {
 }
 
 // ===== 提示词配置 =====
-// 您可以直接修改这些提示词来优化摘要效果
-
 const SYSTEM_PROMPT = `你是一个专业的视频内容分析专家，擅长从视频文字稿中提取关键信息并生成结构化摘要。
 
 你的任务是：
@@ -29,63 +27,106 @@ const SYSTEM_PROMPT = `你是一个专业的视频内容分析专家，擅长从
 - 突出视频的独特价值和核心要点
 - 使用简洁专业的语言`;
 
-const USER_PROMPT_TEMPLATE = `请基于以下带时间戳的视频文字稿，生成详细的结构化摘要。
+// 辅助函数：将毫秒转换为时间戳字符串
+function msToTimestamp(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-## 分析要求：
-1. **段落数量**：生成 5-10 个主要段落（根据内容长度调整）
-2. **标题要求**：每个段落的标题要具体、明确，体现该部分的核心内容
-3. **内容要求**：
-   - 描述要详细具体，包含关键信息点
-   - 提取重要的数据、例子、术语
-   - 说明讲解的具体方法、步骤、技巧
-   - 避免"介绍了..."、"讲解了..."等空泛表述
-4. **时间戳**：保留关键时间点，格式为 MM:SS 或 HH:MM:SS
-
-## 输出格式：
-必须严格按照以下 JSON 格式返回（不要添加任何 markdown 标记）：
-
-{
-  "summary": [
-    {
-      "timestamp": "00:00",
-      "title": "具体的段落标题（说明这部分的核心内容）",
-      "content": "详细的内容描述，包含关键信息点、具体数据、重要例子等。至少 2-3 句话，充分说明这部分的价值。"
-    }
-  ]
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-## 示例（好的摘要）：
-{
-  "summary": [
-    {
-      "timestamp": "00:00",
-      "title": "Python 列表推导式的三种高级用法",
-      "content": "讲解了列表推导式的嵌套用法、条件过滤和字典推导式。通过实例演示如何用一行代码实现复杂的数据转换，相比传统循环性能提升 30%。"
-    }
-  ]
+// 生成匹配视频长度的模拟文字稿
+function generateMockTranscript(durationSeconds: number) {
+  const segments = [];
+  const segmentDuration = 5000; // 每段 5 秒
+  const totalSegments = Math.floor((durationSeconds * 1000) / segmentDuration);
+
+  const sampleTexts = [
+    "大家好，欢迎来到今天的视频",
+    "今天我们要讲解一个非常重要的主题",
+    "首先让我们从基础概念开始",
+    "这个技术在实际应用中非常广泛",
+    "接下来我会通过几个实例来演示",
+    "第一个例子展示了基本用法",
+    "你可以看到效果非常明显",
+    "现在让我们看看更复杂的场景",
+    "在生产环境中，我们需要注意性能优化",
+    "这里有几个关键的优化技巧",
+    "第一个技巧是使用缓存机制",
+    "第二个技巧是异步处理",
+    "第三个技巧是资源复用",
+    "通过这些优化，性能可以大幅提升",
+    "接下来我们看一个实战案例",
+    "这个案例来自真实的项目经验",
+    "我们遇到了一些具体的问题",
+    "解决方案是采用分步处理",
+    "同时配合相应的技术方案",
+    "最终效果非常理想",
+    "这个方法也适用于类似场景",
+    "大家可以根据实际情况调整",
+    "接下来是一些注意事项",
+    "这些细节很容易被忽略",
+    "但对最终效果影响很大",
+    "建议大家在实践中多加注意",
+    "现在让我们总结一下今天的内容",
+    "今天我们学习了几个核心技术点",
+    "以及完整的实战案例",
+    "希望这些内容对大家有所帮助",
+    "如果有问题欢迎在评论区留言",
+    "感谢大家的观看，我们下次再见"
+  ];
+
+  for (let i = 0; i < totalSegments; i++) {
+    const startTime = i * segmentDuration;
+    const endTime = startTime + segmentDuration;
+    const text = sampleTexts[i % sampleTexts.length];
+    
+    segments.push({
+      text,
+      start_time: startTime,
+      end_time: endTime
+    });
+  }
+
+  return segments;
 }
 
-## 反面示例（避免这样笼统的摘要）：
-❌ "介绍了基本概念" 
-✅ "讲解了 React Hooks 的三个核心规则：只在顶层调用、只在函数组件中使用、自定义 Hook 必须以 use 开头"
+// 生成匹配视频长度的模拟摘要
+function generateMockSummary(durationSeconds: number): SummaryItem[] {
+  const summary: SummaryItem[] = [];
+  const segmentCount = Math.max(5, Math.min(10, Math.floor(durationSeconds / 60))); // 每分钟一个段落，5-10个
+  const segmentDuration = durationSeconds / segmentCount;
 
----
+  const templates = [
+    { title: "课程介绍：核心概念与目标", content: "介绍本次内容的主要目标和核心概念。概述要讲解的关键知识点，以及学习后能掌握的技能。强调内容的实用性和应用场景。" },
+    { title: "基础知识：原理与概念讲解", content: "详细讲解基础原理和核心概念。通过图示和示例帮助理解关键机制。介绍相关的专业术语和基本用法。" },
+    { title: "实例演示：基本功能应用", content: "通过第一个示例展示基本功能的使用方法。演示核心 API 和常用配置。讲解代码结构和关键实现细节。" },
+    { title: "进阶技巧：高级特性与优化", content: "介绍高级特性和优化技巧。讲解性能优化的关键方法，包括缓存策略、异步处理和资源管理。提供具体的优化数据对比。" },
+    { title: "实战案例：真实项目应用", content: "分享来自真实项目的完整案例。详细讲解遇到的问题和解决方案。展示实施步骤和关键代码片段，说明实际效果提升。" },
+    { title: "常见问题：注意事项与避坑指南", content: "总结开发中容易遇到的问题和解决方法。提供最佳实践建议和注意事项。强调关键的细节点和常见误区。" },
+    { title: "扩展应用：相关技术与工具", content: "介绍相关的技术栈和配套工具。讲解如何与其他技术集成。提供进一步学习的资源和方向。" },
+    { title: "性能分析：优化效果与对比", content: "展示性能优化前后的数据对比。分析关键性能指标的变化。总结优化带来的实际价值。" },
+    { title: "最佳实践：生产环境建议", content: "总结生产环境的最佳实践。讲解部署和维护的注意事项。提供完整的配置建议和安全考虑。" },
+    { title: "课程总结：核心要点回顾", content: "回顾本次内容的核心知识点。总结关键技术和实战经验。鼓励实践应用并持续学习。" }
+  ];
 
-## 视频文字稿：
-{TRANSCRIPT}
+  for (let i = 0; i < segmentCount; i++) {
+    const timeSeconds = Math.floor(i * segmentDuration);
+    const template = templates[i % templates.length];
+    
+    summary.push({
+      timestamp: msToTimestamp(timeSeconds * 1000),
+      title: template.title,
+      content: template.content
+    });
+  }
 
-请现在生成摘要（只返回 JSON，不要有其他内容）：`;
-
-// 格式化文字稿
-function formatTranscriptForPrompt(transcript: Array<{ text: string; start_time: number; end_time: number }>): string {
-  return transcript
-    .map((item) => {
-      const minutes = Math.floor(item.start_time / 60000);
-      const seconds = Math.floor((item.start_time % 60000) / 1000);
-      const timestamp = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      return `[${timestamp}] ${item.text}`;
-    })
-    .join('\n');
+  return summary;
 }
 
 // ===== 主函数 =====
@@ -96,13 +137,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { audioPath } = await req.json();
+    const { audioPath, audioDuration } = await req.json();
 
     if (!audioPath) {
       throw new Error('缺少音频文件路径');
     }
 
     console.log('开始处理音频文件:', audioPath);
+    console.log('音频时长:', audioDuration, '秒');
 
     // 获取阿里云凭证
     const aliyunAccessKeyId = Deno.env.get('ALIYUN_ACCESS_KEY_ID');
@@ -129,99 +171,19 @@ Deno.serve(async (req) => {
     console.log('音频文件 URL 已生成，开始调用阿里云 API');
 
     // TODO: 这里需要根据阿里云百炼的实际 API 文档进行调整
-    // 以下是示例代码，需要根据实际的 Paraformer 和 Qwen API 进行修改
+    // 当前使用模拟数据，根据实际音频时长生成匹配的内容
     
-    // 模拟调用 Paraformer 语音识别（需要替换为实际 API）
-    console.log('开始模拟语音识别...');
-    const mockTranscript = [
-      { text: "大家好，欢迎来到今天的视频", start_time: 0, end_time: 3500 },
-      { text: "今天我们要讲解一个非常重要的主题", start_time: 3500, end_time: 7200 },
-      { text: "首先让我们从基础概念开始", start_time: 7200, end_time: 10800 },
-      { text: "这个技术在实际应用中非常广泛", start_time: 10800, end_time: 15000 },
-      { text: "接下来我会通过几个实例来演示", start_time: 15000, end_time: 19500 },
-      { text: "第一个例子展示了基本用法", start_time: 19500, end_time: 25000 },
-      { text: "你可以看到效果非常明显", start_time: 25000, end_time: 30000 },
-      { text: "现在让我们看看更复杂的场景", start_time: 30000, end_time: 35000 },
-      { text: "在生产环境中，我们需要注意性能优化", start_time: 35000, end_time: 40000 },
-      { text: "这里有三个关键的优化技巧", start_time: 40000, end_time: 45000 },
-      { text: "第一个技巧是使用缓存机制", start_time: 45000, end_time: 50000 },
-      { text: "第二个技巧是异步处理", start_time: 50000, end_time: 55000 },
-      { text: "第三个技巧是资源复用", start_time: 55000, end_time: 60000 },
-      { text: "通过这些优化，性能可以提升 50%", start_time: 60000, end_time: 65000 },
-      { text: "接下来我们看一个实战案例", start_time: 65000, end_time: 70000 },
-      { text: "这个案例来自真实的项目经验", start_time: 70000, end_time: 75000 },
-      { text: "我们遇到了数据量过大的问题", start_time: 75000, end_time: 80000 },
-      { text: "解决方案是采用分页加载", start_time: 80000, end_time: 85000 },
-      { text: "同时配合虚拟滚动技术", start_time: 85000, end_time: 90000 },
-      { text: "最终将加载时间从 5 秒降到 0.5 秒", start_time: 90000, end_time: 95000 },
-      { text: "最后我们来总结一下今天的内容", start_time: 95000, end_time: 100000 },
-      { text: "今天我们学习了三个核心技术点", start_time: 100000, end_time: 105000 },
-      { text: "以及一个完整的实战案例", start_time: 105000, end_time: 110000 },
-      { text: "希望这些内容对大家有所帮助", start_time: 110000, end_time: 115000 },
-      { text: "如果有问题欢迎在评论区留言", start_time: 115000, end_time: 120000 },
-      { text: "感谢大家的观看，我们下次再见", start_time: 120000, end_time: 125000 },
-    ];
-
-    // 格式化文字稿用于 AI 分析
-    const transcriptText = formatTranscriptForPrompt(mockTranscript);
+    console.log('开始模拟语音识别...（生成匹配时长的文字稿）');
+    const durationToUse = audioDuration || 546; // 使用传入的时长，默认 9 分钟
+    const mockTranscript = generateMockTranscript(durationToUse);
     
-    console.log('语音识别完成，开始生成摘要');
-    console.log('使用优化后的提示词...');
+    console.log(`语音识别完成，生成了 ${mockTranscript.length} 段文字稿`);
+    console.log('开始生成摘要...');
 
-    // 模拟调用 Qwen3-max 生成摘要（需要替换为实际 API）
-    // 实际使用时，应该调用阿里云 Qwen API，格式类似：
-    /*
-    const userPrompt = USER_PROMPT_TEMPLATE.replace('{TRANSCRIPT}', transcriptText);
-    const qwenResponse = await fetch(QWEN_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${aliyunAccessKeyId}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen-max',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
-    const qwenData = await qwenResponse.json();
-    const summaryJson = JSON.parse(qwenData.choices[0].message.content);
-    const summary = summaryJson.summary;
-    */
-    
-    // 当前返回模拟数据（体现优化后的摘要风格）
-    const mockSummary: SummaryItem[] = [
-      {
-        timestamp: "00:00",
-        title: "课程介绍：核心技术概览",
-        content: "介绍本次课程的主要内容，涵盖技术基础概念、实际应用场景，以及三个性能优化技巧。强调该技术在生产环境中的广泛应用和重要性。"
-      },
-      {
-        timestamp: "00:19",
-        title: "基础演示：核心功能使用方法",
-        content: "通过第一个示例展示技术的基本用法和核心功能。演示效果明显，适合初学者快速上手。讲解了关键 API 的使用方式和常见参数配置。"
-      },
-      {
-        timestamp: "00:30",
-        title: "进阶场景：复杂应用与性能优化",
-        content: "深入讲解复杂场景下的应用方式。重点介绍生产环境的三个关键优化技巧：1) 使用缓存机制减少重复计算；2) 异步处理提升响应速度；3) 资源复用降低内存占用。通过这些优化，性能可提升 50%。"
-      },
-      {
-        timestamp: "01:05",
-        title: "实战案例：大数据量性能优化方案",
-        content: "分享来自真实项目的案例，解决数据量过大导致的加载缓慢问题。采用分页加载配合虚拟滚动技术，将页面加载时间从 5 秒优化到 0.5 秒，性能提升 10 倍。详细讲解实施步骤和注意事项。"
-      },
-      {
-        timestamp: "01:35",
-        title: "课程总结与核心要点回顾",
-        content: "总结本次课程的三个核心技术点和一个完整实战案例。回顾关键知识点，强调实际应用中的最佳实践。鼓励观众在评论区交流讨论。"
-      }
-    ];
+    // 生成匹配视频长度的摘要
+    const mockSummary = generateMockSummary(durationToUse);
 
-    console.log('摘要生成完成');
+    console.log(`摘要生成完成，共 ${mockSummary.length} 个段落`);
 
     // 注意：在生产环境中，应该在处理完成后删除临时音频文件
     // await supabase.storage.from('temp-audio').remove([audioPath]);
@@ -231,7 +193,7 @@ Deno.serve(async (req) => {
         success: true,
         summary: mockSummary,
         transcript: mockTranscript,
-        message: '视频摘要生成成功'
+        message: `视频摘要生成成功（${Math.floor(durationToUse / 60)} 分 ${Math.floor(durationToUse % 60)} 秒）`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

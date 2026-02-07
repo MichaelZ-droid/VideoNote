@@ -19,9 +19,11 @@ interface VideoState {
   videoFile: File | null;
   videoUrl: string | null;
   videoTitle: string;
+  videoDuration: number; // 添加视频时长（秒）
   
   // 音频相关
   audioBlob: Blob | null;
+  audioDuration: number; // 添加音频时长（秒）
   
   // 摘要数据
   summary: SummaryItem[] | null;
@@ -34,7 +36,8 @@ interface VideoState {
   
   // Actions
   setVideoFile: (file: File) => void;
-  setAudioBlob: (blob: Blob) => void;
+  setVideoDuration: (duration: number) => void;
+  setAudioBlob: (blob: Blob, duration?: number) => void;
   setSummary: (summary: SummaryItem[], transcript: TranscriptItem[]) => void;
   setStage: (stage: ProcessStage) => void;
   setProgress: (progress: number) => void;
@@ -46,7 +49,9 @@ export const useVideoStore = create<VideoState>((set) => ({
   videoFile: null,
   videoUrl: null,
   videoTitle: '',
+  videoDuration: 0,
   audioBlob: null,
+  audioDuration: 0,
   summary: null,
   transcript: null,
   stage: 'upload',
@@ -65,8 +70,16 @@ export const useVideoStore = create<VideoState>((set) => ({
     });
   },
 
-  setAudioBlob: (blob) => {
-    set({ audioBlob: blob, stage: 'uploading' });
+  setVideoDuration: (duration) => {
+    set({ videoDuration: duration });
+  },
+
+  setAudioBlob: (blob, duration) => {
+    set({ 
+      audioBlob: blob, 
+      audioDuration: duration || 0,
+      stage: 'uploading' 
+    });
   },
 
   setSummary: (summary, transcript) => {
@@ -86,11 +99,17 @@ export const useVideoStore = create<VideoState>((set) => ({
   },
 
   reset: () => {
+    const currentUrl = useVideoStore.getState().videoUrl;
+    if (currentUrl) {
+      URL.revokeObjectURL(currentUrl);
+    }
     set({
       videoFile: null,
       videoUrl: null,
       videoTitle: '',
+      videoDuration: 0,
       audioBlob: null,
+      audioDuration: 0,
       summary: null,
       transcript: null,
       stage: 'upload',

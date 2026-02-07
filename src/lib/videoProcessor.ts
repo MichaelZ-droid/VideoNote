@@ -37,10 +37,14 @@ export const uploadAudioToStorage = async (
 };
 
 export const processVideoSummary = async (
-  audioPath: string
+  audioPath: string,
+  audioDuration?: number
 ): Promise<ProcessVideoResponse> => {
   const { data, error } = await supabase.functions.invoke('process-video-summary', {
-    body: { audioPath },
+    body: { 
+      audioPath,
+      audioDuration: audioDuration || 0
+    },
   });
 
   if (error) {

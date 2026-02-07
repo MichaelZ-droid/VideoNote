@@ -1,8 +1,18 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, Moon, Sun } from 'lucide-react';
+import { Film, Moon, Sun, Trash2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { VideoUploader } from '@/components/video/VideoUploader';
 import { VideoPlayer, VideoPlayerRef } from '@/components/video/VideoPlayer';
 import { ProcessingProgress } from '@/components/video/ProcessingProgress';
@@ -10,6 +20,7 @@ import { SummaryPanel } from '@/components/video/SummaryPanel';
 import { useVideoStore } from '@/hooks/useVideoStore';
 import { extractAudioFromVideo } from '@/lib/ffmpeg';
 import { uploadAudioToStorage, processVideoSummary, parseTimestamp } from '@/lib/videoProcessor';
+import { getAudioDuration, getVideoDuration } from '@/lib/audioUtils';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -19,18 +30,22 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
+  const [showClearDialog, setShowClearDialog] = useState(false);
   
   const {
     videoFile,
     videoUrl,
     videoTitle,
+    audioDuration,
     stage,
     summary,
     setAudioBlob,
+    setVideoDuration,
     setSummary,
     setStage,
     setProgress,
     setError,
+    reset,
   } = useVideoStore();
 
   useEffect(() => {
@@ -40,11 +55,22 @@ const Index = () => {
       try {
         setProgress(0);
         
+        // 获取视频时长
+        console.log('正在读取视频时长...');
+        const videoDuration = await getVideoDuration(videoFile);
+        setVideoDuration(videoDuration);
+        console.log(`视频时长: ${videoDuration.toFixed(2)} 秒`);
+        
+        // 提取音频
         const audioBlob = await extractAudioFromVideo(videoFile, (progress) => {
           setProgress(progress);
         });
 
-        setAudioBlob(audioBlob);
+        // 获取音频时长
+        const audioDurationValue = await getAudioDuration(audioBlob);
+        console.log(`音频时长: ${audioDurationValue.toFixed(2)} 秒`);
+        
+        setAudioBlob(audioBlob, audioDurationValue);
         setStage('uploading');
         setProgress(100);
 
@@ -57,7 +83,8 @@ const Index = () => {
         setStage('analyzing');
         setProgress(0);
 
-        const response = await processVideoSummary(audioPath);
+        // 传递音频时长给后端，用于生成匹配的摘要
+        const response = await processVideoSummary(audioPath, audioDurationValue);
 
         if (response.success && response.summary && response.transcript) {
           setSummary(response.summary, response.transcript);
@@ -78,7 +105,7 @@ const Index = () => {
     };
 
     processVideo();
-  }, [videoFile, stage, setAudioBlob, setStage, setProgress, setSummary, setError, videoTitle]);
+  }, [videoFile, stage, setAudioBlob, setVideoDuration, setStage, setProgress, setSummary, setError, videoTitle]);
 
   const handleTimestampClick = (timestamp: string) => {
     const seconds = parseTimestamp(timestamp);
@@ -91,8 +118,21 @@ const Index = () => {
     });
   };
 
+  const handleClearVideo = () => {
+    setShowClearDialog(true);
+  };
+
+  const confirmClear = () => {
+    reset();
+    setShowClearDialog(false);
+    toast.success('已清除', {
+      description: '您可以上传新的视频',
+    });
+  };
+
   const isProcessing = stage === 'extracting' || stage === 'uploading' || stage === 'analyzing';
   const showSummary = stage === 'ready' && summary;
+  const canClear = stage !== 'upload' && !isProcessing;
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,18 +151,32 @@ const Index = () => {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="rounded-full"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
+          <div className="flex items-center gap-2">
+            {canClear && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearVideo}
+                className="gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">清除视频</span>
+              </Button>
             )}
-          </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="rounded-full"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -223,6 +277,24 @@ const Index = () => {
       <footer className="mt-auto py-6 text-center text-sm text-muted-foreground border-t border-border/40">
         <p>由 阿里云百炼 AI 驱动 · 视频本地播放，仅上传音频</p>
       </footer>
+
+      {/* 清除确认对话框 */}
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认清除视频？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将清除当前视频和生成的摘要，您将需要重新上传视频。此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClear} className="bg-destructive hover:bg-destructive/90">
+              确认清除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
