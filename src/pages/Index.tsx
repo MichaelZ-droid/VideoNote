@@ -84,8 +84,8 @@ const Index = () => {
         setStage('analyzing');
         setProgress(0);
 
-        // 传递音频时长给后端，用于生成匹配的摘要
-        const response = await processVideoSummary(audioPath, audioDurationValue);
+        // 传递音频时长和视频标题给后端，用于生成匹配的摘要
+        const response = await processVideoSummary(audioPath, audioDurationValue, videoTitle);
 
         if (response.success && response.summary && response.transcript) {
           setSummary(response.summary, response.transcript);
