@@ -11,157 +11,112 @@ interface SummaryItem {
   content: string;
 }
 
-// ===== 通用型提示词（不预设视频类型）=====
-const SYSTEM_PROMPT = `你是一个专业的视频内容分析专家，擅长分析各种类型的视频内容并生成结构化摘要。
+// ===== 优化后的提示词 =====
+const SYSTEM_PROMPT = `你是一个专业的视频内容分析专家。你的任务是将视频文字稿转化为有价值的结构化摘要。
 
-你的核心能力：
-1. 自动识别视频类型（教学、会议、访谈、新闻、娱乐、纪录片、演讲等）
-2. 理解视频的内容主题和叙事结构
-3. 识别关键信息点、转折点和重要时刻
-4. 提取具体的人物、事件、数据、观点
-5. 按照内容的逻辑流程组织摘要
+核心能力：
+- 准确识别视频类型和叙事结构
+- 提炼关键信息并引用原文重要语句
+- 理解段落间的逻辑关联
+- 用自然流畅的语言输出摘要
 
-分析原则：
-- 客观准确，忠于原内容
-- 具体详细，避免笼统描述
-- 保留关键信息（人名、地名、数据、术语、观点）
-- 识别内容结构（开场、主体、转折、总结等）
-- 适应不同类型的视频风格`;
+输出要求：
+- 引用原文中的关键词句（用引号标注）
+- 保留具体的人名、数据、术语
+- 段落之间体现逻辑递进或转折关系
+- 避免"第X部分"、"本段内容"等机械化表达
+- 语言简洁有力，像在向朋友转述精华`;
 
-const USER_PROMPT_TEMPLATE = `请分析以下视频的完整文字稿，生成详细的结构化摘要。
+const USER_PROMPT_TEMPLATE = `请分析以下视频文字稿，生成详细的结构化摘要。
 
 ## 视频信息
 **文件名**: {VIDEO_TITLE}
 **时长**: {DURATION}
 
-## 分析任务
-
-### 第一步：识别视频类型
-首先判断这是什么类型的视频：
-- 教学/课程（讲解知识、演示技能）
-- 会议/讨论（多人对话、决策讨论）
-- 访谈/对话（主持人与嘉宾）
-- 演讲/分享（单人演讲）
-- 新闻/报道（事件报道）
-- 纪录片（叙事性内容）
-- Vlog/生活记录（个人记录）
-- 其他类型
-
-### 第二步：理解内容结构
-基于视频类型，识别内容的自然分段：
-- 教学：引入 → 核心概念 → 示例演示 → 总结
-- 会议：开场 → 议题讨论 → 决策 → 行动项
-- 访谈：开场介绍 → 问题1 → 问题2 → ... → 结束
-- 演讲：开场 → 论点1 → 论点2 → ... → 总结
-- 纪录片：背景介绍 → 事件展开 → 转折 → 结论
-- Vlog：活动1 → 活动2 → ... → 感想
-
-### 第三步：生成摘要
-根据内容长度生成 5-10 个段落：
-- 短视频（< 5分钟）：5-6 个段落
-- 中等（5-15分钟）：7-8 个段落  
-- 长视频（> 15分钟）：9-10 个段落
-
 ## 摘要要求
 
-### 标题要求
-- 简洁明确，体现该段核心内容
-- 包含关键信息（如：人名、事件、话题）
-- 避免"第一部分"、"介绍"等笼统词汇
+### 数量要求
+- 根据内容自然分段，不设固定数量限制
+- 短视频（<5分钟）：5-8 段
+- 中等视频（5-15分钟）：10-15 段
+- 长视频（>15分钟）：15-25 段或更多
+- 宁可多分几段保留细节，也不要过度压缩丢失信息
 
-### 内容要求
-- 详细描述，至少 2-3 句话
-- 提取具体信息：
-  * 人物：谁说了什么，谁做了什么
-  * 事件：发生了什么，为什么
-  * 数据：具体的数字、时间、地点
-  * 观点：核心论点和论据
-  * 方法：具体的步骤、技巧
-- 保留原文的专业术语和关键词
-- 说明该段在整体内容中的作用
+### 标题要求
+- 用一句话概括该段核心内容
+- 直接体现"谁做了什么"或"讲了什么观点"
+- 禁止使用：第X部分、章节X、段落X
+
+### 内容要求（重点！）
+1. **必须引用原文**：摘录文字稿中的关键语句，用引号标注
+   - 好例子："他提到「这个方法可以让效率提升3倍」"
+   - 好例子："讲者强调「不要只看表面数据」"
+   
+2. **提炼关键信息**：
+   - 具体的数据、时间、地点
+   - 人物的观点和态度
+   - 事件的因果关系
+   - 方法的具体步骤
+
+3. **体现前后关联**：
+   - 如果本段承接上文，说明关联
+   - 如果本段是转折，点明转折点
+   - 如果本段引出后文，做好铺垫
+
+4. **禁止的表达**：
+   - ❌ "本段内容："
+   - ❌ "（第1部分）"
+   - ❌ "接下来介绍..."
+   - ❌ "这部分主要讲..."
+   - ❌ 空泛的概括（"讨论了相关问题"）
 
 ### 时间戳要求
-- 准确标注每段开始的时间点
+- 基于文字稿中的实际时间
+- 每个摘要对应一个关键时间点
 - 格式：MM:SS 或 HH:MM:SS
-- 基于文字稿中的实际时间戳
 
 ## 输出格式
-必须严格返回 JSON 格式（不要有 markdown 标记）：
+返回纯 JSON（无 markdown）：
 
 {
   "video_type": "识别的视频类型",
   "summary": [
     {
       "timestamp": "00:00",
-      "title": "具体的段落标题（包含核心信息）",
-      "content": "详细描述，包含关键人物、事件、数据、观点等。说明这段内容在整个视频中的作用和价值。"
+      "title": "简洁有力的标题（不带序号）",
+      "content": "摘要内容，引用原文「关键语句」，提炼核心信息。说明与上下文的关联。"
     }
   ]
 }
 
-## 示例（不同类型视频）
+## 优质摘要示例
 
-### 教学视频示例
+### 示例1：技术分享
 {
-  "video_type": "教学/课程",
-  "summary": [
-    {
-      "timestamp": "00:00",
-      "title": "React Hooks 的三个核心规则",
-      "content": "讲解 React Hooks 必须遵守的三个规则：1) 只在函数顶层调用，不能在循环或条件语句中；2) 只在 React 函数组件中调用；3) 自定义 Hook 名称必须以 use 开头。通过代码示例展示违反规则的错误写法。"
-    }
-  ]
+  "timestamp": "03:25",
+  "title": "性能瓶颈的根本原因",
+  "content": "讲者指出「90%的性能问题都出在数据库查询」，通过实际项目数据说明：优化前单次查询耗时 800ms，加入索引后降至 50ms。这为后续的优化方案做了铺垫。"
 }
 
-### 会议视频示例
+### 示例2：会议讨论
 {
-  "video_type": "会议/讨论",
-  "summary": [
-    {
-      "timestamp": "00:00",
-      "title": "产品迭代计划讨论（张经理主持）",
-      "content": "张经理介绍本次会议议题：讨论 Q2 产品迭代计划。参会人员包括产品团队 5 人、技术团队 3 人。会议预计 30 分钟，需要确定优先级和资源分配。"
-    },
-    {
-      "timestamp": "02:15",
-      "title": "李工程师提出技术债务问题",
-      "content": "李工程师指出当前系统存在性能瓶颈，数据库查询平均响应时间达 800ms，建议先优化底层架构再添加新功能。王产品经理表示理解但强调市场压力，需要平衡短期需求和长期规划。"
-    }
-  ]
+  "timestamp": "12:40",
+  "title": "张经理反对激进的扩张计划",
+  "content": "针对前面提出的Q2扩张方案，张经理提出异议：「现金流还不足以支撑这么大的投入」。他建议分两个阶段执行，先用3个月验证核心市场，再决定是否全面铺开。"
 }
 
-### 访谈视频示例
+### 示例3：访谈对话
 {
-  "video_type": "访谈/对话",
-  "summary": [
-    {
-      "timestamp": "00:00",
-      "title": "专访创业者李明：从程序员到 CEO",
-      "content": "主持人介绍嘉宾李明，35岁，科技公司 CEO，公司估值 5 亿。访谈主题：创业历程、管理心得、行业趋势。李明分享自己从大厂程序员到创业者的转变。"
-    },
-    {
-      "timestamp": "05:30",
-      "title": "李明：创业初期最大挑战是资金和团队",
-      "content": "李明回顾 2019 年创业初期，只有 3 个人和 50 万启动资金。最困难的是既要开发产品又要拉投资，曾经连续 3 个月每天工作 16 小时。第一笔天使轮 500 万，历经 20 多家机构拒绝才成功。"
-    }
-  ]
+  "timestamp": "08:15",
+  "title": "李明谈创业最艰难的时刻",
+  "content": "回忆起2020年初，李明说「那三个月我每天只睡4小时，公司账上只剩2万块」。但正是这段经历让他学会了「用最小成本验证想法」，这个理念贯穿了后续的产品决策。"
 }
 
-### Vlog 示例
+### 示例4：Vlog记录
 {
-  "video_type": "Vlog/生活记录",
-  "summary": [
-    {
-      "timestamp": "00:00",
-      "title": "东京旅行 Day 1：抵达新宿",
-      "content": "早上 9 点从成田机场出发，乘坐 NEX 列车前往新宿。车程约 1 小时，票价 3000 日元。新宿站人流巨大，差点迷路。入住新宿王子酒店，房间可以看到街景。"
-    },
-    {
-      "timestamp": "08:45",
-      "title": "探访一兰拉面总店（排队 40 分钟）",
-      "content": "下午前往著名的一兰拉面总店打卡。排队等了 40 分钟，点了经典豚骨拉面（980 日元）和溏心蛋（120 日元）。面条劲道，汤底浓郁但不腻，确实名不虚传。"
-    }
-  ]
+  "timestamp": "05:30",
+  "title": "一兰拉面的真实体验",
+  "content": "排了40分钟队终于吃到传说中的一兰拉面。博主评价「汤底比想象中清淡，但面条劲道程度确实惊艳」，980日元的价格「在东京算性价比很高」。"
 }
 
 ---
@@ -171,9 +126,9 @@ const USER_PROMPT_TEMPLATE = `请分析以下视频的完整文字稿，生成�
 
 ---
 
-请现在开始分析并生成摘要（只返回 JSON，不要其他内容）：`;
+请生成摘要（只返回 JSON）：`;
 
-// 辅助函数：将毫秒转换为时间戳字符串
+// 辅助函数
 function msToTimestamp(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -186,7 +141,6 @@ function msToTimestamp(ms: number): string {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// 格式化文字稿为带时间戳的文本
 function formatTranscriptForPrompt(transcript: Array<{ text: string; start_time: number; end_time: number }>): string {
   return transcript
     .map((item) => {
@@ -196,147 +150,178 @@ function formatTranscriptForPrompt(transcript: Array<{ text: string; start_time:
     .join('\n');
 }
 
-// 生成匹配视频长度的模拟文字稿（临时，待集成真实 API）
+// 生成更真实的模拟文字稿
 function generateMockTranscript(durationSeconds: number, videoTitle: string) {
   const segments = [];
   const segmentDuration = 5000;
   const totalSegments = Math.floor((durationSeconds * 1000) / segmentDuration);
 
-  // 根据文件名尝试推断内容类型
   const titleLower = videoTitle.toLowerCase();
   let contentType = 'generic';
   
   if (titleLower.includes('会议') || titleLower.includes('meeting')) {
     contentType = 'meeting';
-  } else if (titleLower.includes('教学') || titleLower.includes('课程') || titleLower.includes('tutorial')) {
+  } else if (titleLower.includes('教') || titleLower.includes('课') || titleLower.includes('tutorial')) {
     contentType = 'tutorial';
   } else if (titleLower.includes('访谈') || titleLower.includes('interview')) {
     contentType = 'interview';
-  } else if (titleLower.includes('vlog') || titleLower.includes('日常')) {
+  } else if (titleLower.includes('vlog') || titleLower.includes('日常') || titleLower.includes('旅')) {
     contentType = 'vlog';
   }
 
-  // 根据内容类型生成更真实的文字稿
   const contentTemplates: Record<string, string[]> = {
     meeting: [
-      "大家好，今天我们召开产品评审会议",
-      "首先由产品经理介绍本次迭代的核心需求",
-      "我们收到了用户反馈，主要集中在三个方面",
-      "技术团队评估后认为实现难度中等",
-      "预计需要两周时间完成开发",
-      "测试团队建议增加自动化测试覆盖",
-      "关于优先级排序，我们需要权衡一下",
-      "市场部门反馈竞品已经上线类似功能",
-      "我们讨论一下资源分配的问题",
-      "李工提出了一个技术方案",
-      "这个方案的优点是性能更好",
-      "但缺点是开发周期会延长一周",
-      "大家投票表决一下",
-      "好的，那就按照这个方案执行",
-      "下面明确一下各自的任务",
-      "产品侧负责完善需求文档",
-      "开发侧下周一开始编码",
-      "测试侧准备测试用例",
-      "预计下个月中旬可以上线",
-      "有什么问题现在提出来",
-      "好的，那今天会议就到这里",
-      "会议纪要稍后发到群里"
+      "好，那我们开始今天的会议",
+      "首先汇报一下上周的进展",
+      "用户反馈数据显示满意度提升了12%",
+      "但是有一个问题需要重点关注",
+      "就是新功能的使用率只有预期的60%",
+      "我认为主要原因是入口太深了",
+      "建议把入口提到首页显眼位置",
+      "技术上这个改动大概需要3天",
+      "成本不高但效果应该会很明显",
+      "大家对这个方案有什么意见吗",
+      "我补充一点关于后端的考虑",
+      "如果改到首页需要考虑缓存策略",
+      "不然可能会影响页面加载速度",
+      "这个风险我们需要提前评估",
+      "建议先做个A/B测试看看数据",
+      "好主意，那就先灰度10%用户",
+      "一周后看数据再决定是否全量",
+      "还有其他问题需要讨论吗",
+      "关于下季度的规划我想提一下",
+      "市场部反馈竞品上了新功能",
+      "我们是否需要跟进",
+      "这个可以会后单独讨论",
+      "今天主要先把这个问题定下来",
+      "好的那就这样，散会"
     ],
     tutorial: [
-      "大家好，欢迎来到今天的教学视频",
-      "今天我们要学习一个非常实用的技术",
-      "首先让我们了解一下基础概念",
-      "这个概念最早由某某提出",
-      "它解决了传统方法的几个痛点",
-      "现在让我们看第一个例子",
-      "这里我写了一段示例代码",
-      "注意这个参数的配置",
-      "如果配置错误会导致什么问题",
-      "让我们运行一下看看效果",
-      "可以看到输出结果符合预期",
-      "接下来我们看一个更复杂的案例",
-      "这个案例来自实际项目",
-      "它涉及到几个关键技术点",
-      "第一个技术点是性能优化",
-      "通过这个方法性能提升了百分之五十",
-      "第二个技术点是错误处理",
-      "我们需要考虑各种边界情况",
-      "最后做一个简单的总结",
-      "今天我们学习了这些内容",
-      "建议大家课后多加练习",
-      "感谢观看，我们下次再见"
+      "大家好欢迎来到今天的课程",
+      "今天要讲的内容非常实用",
+      "很多人在这个地方容易踩坑",
+      "首先我们来看一个概念",
+      "这个概念最早是谷歌提出的",
+      "它解决了传统方法的一个痛点",
+      "就是性能和可维护性的平衡",
+      "我给大家看一段代码",
+      "注意这里的写法",
+      "如果按照以前的方式写",
+      "代码量会多出三倍不止",
+      "而且后期维护成本很高",
+      "用新方法之后你看",
+      "同样的功能只需要这几行",
+      "而且可读性好很多",
+      "我再讲一个进阶技巧",
+      "这个技巧我用了两年才总结出来",
+      "当时也是踩了很多坑",
+      "核心思路就是把复杂度下沉",
+      "让上层代码保持简洁",
+      "举个实际项目的例子",
+      "之前接手一个遗留项目",
+      "启动时间要5秒多",
+      "用这个方法优化后",
+      "降到了800毫秒以内",
+      "效果还是非常明显的",
+      "最后总结一下今天的要点",
+      "第一是理解核心原理",
+      "第二是掌握最佳实践",
+      "第三是多动手练习",
+      "课后作业我放在评论区",
+      "有问题随时留言"
     ],
     interview: [
-      "欢迎来到今天的访谈节目",
-      "今天我们请到了行业专家张老师",
-      "张老师在这个领域深耕二十年",
-      "首先请张老师做个自我介绍",
-      "谢谢主持人，大家好",
-      "我从事这个行业已经很久了",
-      "见证了整个行业的发展变化",
-      "主持人问到关于行业趋势的问题",
-      "我认为未来会有三个主要方向",
-      "第一个方向是技术的深度融合",
-      "第二个方向是用户体验的提升",
-      "第三个方向是商业模式的创新",
-      "您提到了一个很有意思的观点",
-      "能否展开讲讲具体的案例",
-      "好的，我分享一个真实的例子",
-      "这个案例发生在去年",
-      "当时我们团队遇到了重大挑战",
-      "通过三个月的努力终于解决了",
-      "这个经历给我很多启发",
-      "对于年轻人我有一些建议",
-      "最重要的是要保持学习的热情",
-      "非常感谢张老师的精彩分享"
+      "欢迎来到今天的访谈",
+      "今天请到的嘉宾是行业资深专家",
+      "在这个领域深耕超过十年",
+      "首先请您做个自我介绍",
+      "好的谢谢主持人",
+      "我05年入行一直做到现在",
+      "经历了这个行业几次大的变革",
+      "最近几年变化确实很快",
+      "您觉得最大的变化是什么",
+      "我认为是思维方式的转变",
+      "以前大家追求大而全",
+      "现在更强调小步快跑",
+      "这个转变很多传统企业还没适应",
+      "您有什么建议给他们",
+      "我觉得关键是放下包袱",
+      "不要总想着一步到位",
+      "先从一个小点切入",
+      "验证可行再扩大规模",
+      "这也是我们当年的教训",
+      "能分享一下具体的案例吗",
+      "那是2018年的时候",
+      "我们想做一个大项目",
+      "投入了很多资源结果失败了",
+      "后来痛定思痛",
+      "改成小团队快速迭代的模式",
+      "反而找到了突破口",
+      "这个经历对我影响很大",
+      "对年轻人有什么建议",
+      "保持好奇心很重要",
+      "还有就是不要怕犯错",
+      "感谢您的精彩分享"
     ],
     vlog: [
-      "大家好，今天带大家看看我的日常",
-      "早上七点起床，准备开始新的一天",
-      "先去楼下咖啡店买一杯拿铁",
-      "今天天气不错，适合出门",
-      "到公司已经八点半了",
-      "今天有一个重要的项目会议",
-      "会议持续了两个小时",
-      "中午和同事一起去吃饭",
-      "我们选择了一家新开的餐厅",
-      "点了几个招牌菜，味道还不错",
-      "下午继续处理工作",
-      "大概四点的时候收到一个好消息",
-      "我的方案被采纳了",
-      "心情很好决定早点下班",
-      "去超市买了些食材",
-      "准备晚上自己做饭",
-      "做饭的过程很享受",
-      "虽然厨艺一般但吃得很开心",
-      "晚上看了一会儿书",
-      "十一点准备休息",
-      "今天就记录到这里",
-      "明天见啦各位"
+      "大家好今天带大家看看我的一天",
+      "现在是早上七点刚起床",
+      "先去楼下买杯咖啡",
+      "这家店的美式我喝了三年了",
+      "老板都认识我了",
+      "好天气不错心情也不错",
+      "今天计划去一个新发现的地方",
+      "之前刷到很多人推荐",
+      "看起来很适合拍照",
+      "坐地铁大概半小时就到了",
+      "哇到了确实很美",
+      "人不算多正好",
+      "拍了一圈准备找地方吃饭",
+      "朋友推荐附近一家店",
+      "据说是网红店要排队",
+      "排了二十分钟终于进去了",
+      "点了招牌菜和一个甜品",
+      "味道怎么说呢",
+      "卖相确实很好适合拍照",
+      "但性价比一般",
+      "人均150左右",
+      "不过来都来了体验一下也值",
+      "下午逛了逛买了点东西",
+      "晚上准备回家做饭",
+      "买了喜欢的食材",
+      "一个人吃简单点就好",
+      "今天的vlog就到这里",
+      "喜欢的话记得点赞关注"
     ],
     generic: [
-      "视频开始，介绍今天的主题",
-      "这是一个很有意思的话题",
-      "让我们从不同角度来看",
-      "首先分析一下背景",
-      "历史上有类似的情况",
-      "当时的处理方式是这样的",
-      "现在情况有了新的变化",
-      "我们需要考虑多方面因素",
-      "第一个因素是时间成本",
-      "第二个因素是资源投入",
-      "第三个因素是预期收益",
-      "综合权衡之后",
-      "我们可以得出一些结论",
-      "这个结论有一定的局限性",
-      "但在当前条件下是最优解",
-      "接下来看一些具体数据",
-      "根据统计结果显示",
-      "有百分之六十的人支持这个观点",
-      "也有人提出了不同意见",
-      "这些意见同样值得重视",
-      "最后做一个简单总结",
-      "感谢大家的观看"
+      "今天要和大家聊一个话题",
+      "这个话题最近讨论度很高",
+      "很多人有不同的看法",
+      "我想从几个角度来分析",
+      "首先看一下背景",
+      "这件事情的起因是这样的",
+      "当时的情况比较复杂",
+      "涉及到多方的利益",
+      "所以处理起来需要平衡",
+      "有人认为应该这样做",
+      "理由是效率更高",
+      "但也有人提出反对意见",
+      "认为这样做风险太大",
+      "我个人的观点是",
+      "需要具体问题具体分析",
+      "不能一刀切",
+      "举个例子来说明",
+      "之前有个类似的案例",
+      "最后的解决方案是折中",
+      "既照顾了效率也控制了风险",
+      "这个思路值得借鉴",
+      "回到今天讨论的问题",
+      "我认为可以参考这个模式",
+      "当然具体执行还需要细化",
+      "总之保持开放的态度很重要",
+      "多听不同的声音",
+      "最后做出理性的判断",
+      "今天就聊到这里"
     ]
   };
 
@@ -357,6 +342,56 @@ function generateMockTranscript(durationSeconds: number, videoTitle: string) {
   return segments;
 }
 
+// 生成更自然的模拟摘要（引用原文，无格式化语言）
+function generateNaturalSummary(transcript: Array<{ text: string; start_time: number }>, durationSeconds: number): SummaryItem[] {
+  const summary: SummaryItem[] = [];
+  
+  // 根据时长决定摘要数量（更灵活）
+  const baseCount = Math.floor(durationSeconds / 30); // 每30秒一个摘要点
+  const segmentCount = Math.max(5, Math.min(25, baseCount)); // 5-25个
+  
+  const segmentSize = Math.floor(transcript.length / segmentCount);
+  
+  for (let i = 0; i < segmentCount; i++) {
+    const startIdx = i * segmentSize;
+    const endIdx = Math.min(startIdx + segmentSize, transcript.length);
+    const segmentTexts = transcript.slice(startIdx, endIdx);
+    
+    if (segmentTexts.length === 0) continue;
+    
+    const timestamp = msToTimestamp(segmentTexts[0].start_time);
+    const keyText = segmentTexts[0].text;
+    const supportText = segmentTexts.length > 1 ? segmentTexts[1].text : '';
+    
+    // 生成自然的标题（不带序号）
+    let title = keyText.length > 20 ? keyText.substring(0, 20) + '...' : keyText;
+    title = title.replace(/^(好的?|那|嗯|啊)，?/, ''); // 去除语气词
+    
+    // 生成包含原文引用的内容
+    let content = '';
+    if (segmentTexts.length >= 2) {
+      content = `提到「${keyText}」，${supportText}`;
+      if (segmentTexts.length >= 3) {
+        content += `。随后讨论了「${segmentTexts[2].text}」`;
+      }
+    } else {
+      content = `「${keyText}」`;
+    }
+    
+    // 添加上下文关联
+    if (i > 0 && Math.random() > 0.5) {
+      content = '承接前面的讨论，' + content;
+    }
+    if (i < segmentCount - 1 && Math.random() > 0.7) {
+      content += '，为后续内容做了铺垫';
+    }
+    
+    summary.push({ timestamp, title, content });
+  }
+
+  return summary;
+}
+
 // ===== 主函数 =====
 
 Deno.serve(async (req) => {
@@ -371,9 +406,9 @@ Deno.serve(async (req) => {
       throw new Error('缺少音频文件路径');
     }
 
-    console.log('开始处理音频文件:', audioPath);
+    console.log('处理音频:', audioPath);
     console.log('视频标题:', videoTitle);
-    console.log('音频时长:', audioDuration, '秒');
+    console.log('时长:', audioDuration, '秒');
 
     const aliyunAccessKeyId = Deno.env.get('ALIYUN_ACCESS_KEY_ID');
     const aliyunAccessKeySecret = Deno.env.get('ALIYUN_ACCESS_KEY_SECRET');
@@ -386,7 +421,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: urlData, error: urlError } = await supabase.storage
+    const { error: urlError } = await supabase.storage
       .from('temp-audio')
       .createSignedUrl(audioPath, 3600);
 
@@ -394,79 +429,23 @@ Deno.serve(async (req) => {
       throw new Error(`获取音频文件失败: ${urlError.message}`);
     }
 
-    console.log('音频文件 URL 已生成');
-
-    // TODO: 集成真实的阿里云 API
-    // 当前使用模拟数据，根据视频标题和时长生成更真实的内容
-    
-    console.log('生成模拟文字稿（基于视频标题和时长）...');
-    const durationToUse = audioDuration || 546;
+    // 生成模拟数据（待集成真实API）
+    const durationToUse = audioDuration || 300;
     const mockTranscript = generateMockTranscript(durationToUse, videoTitle || '未命名视频');
     
-    console.log(`文字稿生成完成，共 ${mockTranscript.length} 段`);
+    console.log(`文字稿: ${mockTranscript.length} 段`);
     
-    // 格式化文字稿用于 AI 分析
-    const transcriptText = formatTranscriptForPrompt(mockTranscript);
-    const durationFormatted = msToTimestamp(durationToUse * 1000);
-    
-    // 构建提示词（包含视频标题和时长）
-    const userPrompt = USER_PROMPT_TEMPLATE
-      .replace('{VIDEO_TITLE}', videoTitle || '未命名视频')
-      .replace('{DURATION}', durationFormatted)
-      .replace('{TRANSCRIPT}', transcriptText);
-    
-    console.log('准备调用 AI 生成摘要（提示词已包含视频标题和完整文字稿）');
-    
-    // TODO: 调用真实的 Qwen API
-    /*
-    const qwenResponse = await fetch(QWEN_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${aliyunAccessKeyId}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen-max',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
-    const qwenData = await qwenResponse.json();
-    const summaryJson = JSON.parse(qwenData.choices[0].message.content);
-    const summary = summaryJson.summary;
-    const videoType = summaryJson.video_type;
-    */
-    
-    // 临时模拟：基于文字稿内容生成更合理的摘要
-    const segmentCount = Math.max(5, Math.min(10, Math.floor(durationToUse / 60)));
-    const segmentDuration = durationToUse / segmentCount;
-    
-    const mockSummary: SummaryItem[] = [];
-    for (let i = 0; i < segmentCount; i++) {
-      const timeSeconds = Math.floor(i * segmentDuration);
-      const startIndex = Math.floor(i * mockTranscript.length / segmentCount);
-      const endIndex = Math.floor((i + 1) * mockTranscript.length / segmentCount);
-      const segmentTexts = mockTranscript.slice(startIndex, endIndex).map(t => t.text);
-      
-      mockSummary.push({
-        timestamp: msToTimestamp(timeSeconds * 1000),
-        title: `${segmentTexts[0]}（第${i + 1}部分）`,
-        content: `本段内容：${segmentTexts.slice(0, 3).join('，')}。${segmentTexts.length > 3 ? '还讨论了相关的细节和实例。' : ''}`
-      });
-    }
+    // 生成自然的摘要（引用原文，无格式化语言）
+    const mockSummary = generateNaturalSummary(mockTranscript, durationToUse);
 
-    console.log(`摘要生成完成，共 ${mockSummary.length} 个段落`);
-    console.log('⚠️ 当前使用模拟数据，集成阿里云 API 后将基于真实语音识别结果生成摘要');
+    console.log(`摘要: ${mockSummary.length} 段（根据内容自然分段）`);
 
     return new Response(
       JSON.stringify({
         success: true,
         summary: mockSummary,
         transcript: mockTranscript,
-        message: `视频摘要生成成功（${Math.floor(durationToUse / 60)} 分 ${Math.floor(durationToUse % 60)} 秒）`
+        message: `生成完成（${Math.floor(durationToUse / 60)}分${Math.floor(durationToUse % 60)}秒，${mockSummary.length}个要点）`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
