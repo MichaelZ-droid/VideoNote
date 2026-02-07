@@ -39,6 +39,7 @@ const Index = () => {
     audioDuration,
     stage,
     summary,
+    transcript,
     setAudioBlob,
     setVideoDuration,
     setSummary,
@@ -214,6 +215,7 @@ const Index = () => {
                     {showSummary && (
                       <SummaryPanel
                         summary={summary}
+                        transcript={transcript || undefined}
                         videoTitle={videoTitle}
                         onTimestampClick={handleTimestampClick}
                       />

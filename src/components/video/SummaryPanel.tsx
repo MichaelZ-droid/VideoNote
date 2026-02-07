@@ -6,16 +6,24 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { SummaryItem } from '@/hooks/useVideoStore';
 import { exportSummaryAsMarkdown, downloadMarkdownFile } from '@/lib/videoProcessor';
+import { TranscriptViewer } from '@/components/video/TranscriptViewer';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
+interface TranscriptItem {
+  text: string;
+  start_time: number;
+  end_time: number;
+}
+
 interface SummaryPanelProps {
   summary: SummaryItem[];
+  transcript?: TranscriptItem[];
   videoTitle: string;
   onTimestampClick: (timestamp: string) => void;
 }
 
-export const SummaryPanel = ({ summary, videoTitle, onTimestampClick }: SummaryPanelProps) => {
+export const SummaryPanel = ({ summary, transcript, videoTitle, onTimestampClick }: SummaryPanelProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -40,6 +48,13 @@ export const SummaryPanel = ({ summary, videoTitle, onTimestampClick }: SummaryP
     toast.success('导出成功', {
       description: '摘要已下载为 Markdown 文件',
     });
+  };
+
+  const handleTranscriptTimestampClick = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    const timestamp = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    onTimestampClick(timestamp);
   };
 
   return (
@@ -74,6 +89,14 @@ export const SummaryPanel = ({ summary, videoTitle, onTimestampClick }: SummaryP
             导出 MD
           </Button>
         </div>
+
+        {transcript && transcript.length > 0 && (
+          <TranscriptViewer 
+            transcript={transcript} 
+            videoTitle={videoTitle}
+            onTimestampClick={handleTranscriptTimestampClick}
+          />
+        )}
 
         <Separator />
       </CardHeader>
