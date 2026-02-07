@@ -1,13 +1,228 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Film, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { Button } from '@/components/ui/button';
+import { VideoUploader } from '@/components/video/VideoUploader';
+import { VideoPlayer, VideoPlayerRef } from '@/components/video/VideoPlayer';
+import { ProcessingProgress } from '@/components/video/ProcessingProgress';
+import { SummaryPanel } from '@/components/video/SummaryPanel';
+import { useVideoStore } from '@/hooks/useVideoStore';
+import { extractAudioFromVideo } from '@/lib/ffmpeg';
+import { uploadAudioToStorage, processVideoSummary, parseTimestamp } from '@/lib/videoProcessor';
+import { toast } from 'sonner';
+import { useMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Index = () => {
+  const { theme, setTheme } = useTheme();
+  const isMobile = useMobile();
+  const videoPlayerRef = useRef<VideoPlayerRef>(null);
+  
+  const {
+    videoFile,
+    videoUrl,
+    videoTitle,
+    stage,
+    summary,
+    setAudioBlob,
+    setSummary,
+    setStage,
+    setProgress,
+    setError,
+  } = useVideoStore();
+
+  useEffect(() => {
+    const processVideo = async () => {
+      if (!videoFile || stage !== 'extracting') return;
+
+      try {
+        setProgress(0);
+        
+        const audioBlob = await extractAudioFromVideo(videoFile, (progress) => {
+          setProgress(progress);
+        });
+
+        setAudioBlob(audioBlob);
+        setStage('uploading');
+        setProgress(100);
+
+        toast.success('音频提取完成', {
+          description: '正在上传并生成摘要...',
+        });
+
+        const audioPath = await uploadAudioToStorage(audioBlob, videoTitle);
+        
+        setStage('analyzing');
+        setProgress(0);
+
+        const response = await processVideoSummary(audioPath);
+
+        if (response.success && response.summary && response.transcript) {
+          setSummary(response.summary, response.transcript);
+          toast.success('摘要生成成功', {
+            description: '您现在可以点击时间戳快速跳转',
+          });
+        } else {
+          throw new Error(response.error || '生成摘要失败');
+        }
+      } catch (error) {
+        console.error('处理视频失败:', error);
+        const message = error instanceof Error ? error.message : '未知错误';
+        setError(message);
+        toast.error('处理失败', {
+          description: message,
+        });
+      }
+    };
+
+    processVideo();
+  }, [videoFile, stage, setAudioBlob, setStage, setProgress, setSummary, setError, videoTitle]);
+
+  const handleTimestampClick = (timestamp: string) => {
+    const seconds = parseTimestamp(timestamp);
+    videoPlayerRef.current?.seekTo(seconds);
+    videoPlayerRef.current?.play();
+    
+    toast.success('已跳转', {
+      description: `播放位置: ${timestamp}`,
+      duration: 1500,
+    });
+  };
+
+  const isProcessing = stage === 'extracting' || stage === 'uploading' || stage === 'analyzing';
+  const showSummary = stage === 'ready' && summary;
+
   return (
-    <div className="w-full h-full p-[32px] bg-gradient-to-b from-[#4E54C8] to-[#A8C0FF] flex flex-col max-md:pt-[32px] max-md:pl-[20px] max-md:pr-[20px] max-md:pb-[32px]">
-      <div className="text-[26px] text-white max-md:text-[22px]">Your App Name</div>
-      <div className='h-full flex-1 flex flex-col items-center justify-center'>
-        <div className='text-[48px] text-white text-center max-md:text-[26px]'>Welcome to your blank app</div>
-        <div className='text-[24px] text-white text-center max-md:text-[16px]'>Make any App yours with ease.</div>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 glass-effect">
+        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Film className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">VideoNote</h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                智能视频摘要生成器
+              </p>
+            </div>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="rounded-full"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto p-4 md:p-6">
+        <AnimatePresence mode="wait">
+          {stage === 'upload' ? (
+            <motion.div
+              key="uploader"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <VideoUploader />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="processor"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Desktop Layout */}
+              {!isMobile ? (
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  {/* Left: Video Player (60%) */}
+                  <div className="lg:col-span-3 space-y-4">
+                    <VideoPlayer ref={videoPlayerRef} src={videoUrl} />
+                    {isProcessing && <ProcessingProgress />}
+                  </div>
+
+                  {/* Right: Summary Panel (40%) */}
+                  <div className="lg:col-span-2">
+                    {showSummary && (
+                      <SummaryPanel
+                        summary={summary}
+                        videoTitle={videoTitle}
+                        onTimestampClick={handleTimestampClick}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Mobile Layout */
+                <div className="space-y-4">
+                  <VideoPlayer ref={videoPlayerRef} src={videoUrl} />
+                  {isProcessing && <ProcessingProgress />}
+                  
+                  {showSummary && (
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button className="w-full" size="lg">
+                          查看内容摘要
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="bottom" className="h-[85vh] p-0">
+                        <SheetHeader className="p-6 pb-4">
+                          <SheetTitle className="text-xl">内容摘要</SheetTitle>
+                        </SheetHeader>
+                        <ScrollArea className="h-[calc(100%-80px)] px-6">
+                          <div className="space-y-3 pb-6">
+                            {summary.map((item, index) => (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="p-4 rounded-xl bg-card border border-border cursor-pointer hover:border-primary/60 transition-smooth"
+                                onClick={() => handleTimestampClick(item.timestamp)}
+                              >
+                                <div className="flex items-baseline gap-2 mb-2">
+                                  <span className="font-mono text-sm font-semibold text-accent">
+                                    {item.timestamp}
+                                  </span>
+                                  <h3 className="font-semibold text-base">
+                                    {item.title}
+                                  </h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                  {item.content}
+                                </p>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </SheetContent>
+                    </Sheet>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Footer */}
+      <footer className="mt-auto py-6 text-center text-sm text-muted-foreground border-t border-border/40">
+        <p>由 阿里云百炼 AI 驱动 · 视频本地播放，仅上传音频</p>
+      </footer>
     </div>
   );
 };

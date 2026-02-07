@@ -5,6 +5,12 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@ffmpeg/ffmpeg':
+    specifier: ^0.12.15
+    version: 0.12.15
+  '@ffmpeg/util':
+    specifier: ^0.12.2
+    version: 0.12.2
   '@hookform/resolvers':
     specifier: ^5.2.1
     version: 5.2.1(react-hook-form@7.62.0)
@@ -156,11 +162,14 @@ dependencies:
     specifier: ^1.1.2
     version: 1.1.2(@types/react-dom@19.1.9)(@types/react@19.1.12)(react-dom@19.1.1)(react@19.1.1)
   vite-plugin-enter-dev:
-    specifier: ^0.0.3
-    version: 0.0.3(vite@7.1.4)
+    specifier: ^0.0.7
+    version: 0.0.7(vite@7.1.4)
   zod:
     specifier: ^4.1.5
     version: 4.1.5
+  zustand:
+    specifier: ^5.0.11
+    version: 5.0.11(@types/react@19.1.12)(react@19.1.1)
 
 devDependencies:
   '@babel/core':
@@ -773,6 +782,23 @@ packages:
       '@eslint/core': 0.15.2
       levn: 0.4.1
     dev: true
+
+  /@ffmpeg/ffmpeg@0.12.15:
+    resolution: {integrity: sha512-1C8Obr4GsN3xw+/1Ww6PFM84wSQAGsdoTuTWPOj2OizsRDLT4CXTaVjPhkw6ARyDus1B9X/L2LiXHqYYsGnRFw==}
+    engines: {node: '>=18.x'}
+    dependencies:
+      '@ffmpeg/types': 0.12.4
+    dev: false
+
+  /@ffmpeg/types@0.12.4:
+    resolution: {integrity: sha512-k9vJQNBGTxE5AhYDtOYR5rO5fKsspbg51gbcwtbkw2lCdoIILzklulcjJfIDwrtn7XhDeF2M+THwJ2FGrLeV6A==}
+    engines: {node: '>=16.x'}
+    dev: false
+
+  /@ffmpeg/util@0.12.2:
+    resolution: {integrity: sha512-ouyoW+4JB7WxjeZ2y6KpRvB+dLp7Cp4ro8z0HIVpZVCM7AwFlHa0c4R8Y/a4M3wMqATpYKhC7lSFHQ0T11MEDw==}
+    engines: {node: '>=18.x'}
+    dev: false
 
   /@floating-ui/core@1.7.3:
     resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
@@ -4715,8 +4741,8 @@ packages:
       d3-timer: 3.0.1
     dev: false
 
-  /vite-plugin-enter-dev@0.0.3(vite@7.1.4):
-    resolution: {integrity: sha512-hf8sjo6LLekZm+vpbPEXJB+G9T6geH/DmdPN6Cy5d1WwJx4TcBnlV90eoUF5Ls8BIVwWF/EchN6amHEf/KnBaQ==}
+  /vite-plugin-enter-dev@0.0.7(vite@7.1.4):
+    resolution: {integrity: sha512-aRq/nYqYuxm1y71UhaVJKv2oELQ3qJC/DGUPk6ZwWpiBi8/hjad71fRNKOKhGqumMCtEkb7ig8Nq/aHVS6EQWg==}
     peerDependencies:
       vite: ^5.0.0 || ^6.0.0
     dependencies:
@@ -4848,4 +4874,26 @@ packages:
 
   /zod@4.1.5:
     resolution: {integrity: sha512-rcUUZqlLJgBC33IT3PNMgsCq6TzLQEG/Ei/KTCU0PedSWRMAXoOUN+4t/0H+Q8bdnLPdqUYnvboJT0bn/229qg==}
+    dev: false
+
+  /zustand@5.0.11(@types/react@19.1.12)(react@19.1.1):
+    resolution: {integrity: sha512-fdZY+dk7zn/vbWNCYmzZULHRrss0jx5pPFiOuMZ/5HJN6Yv3u+1Wswy/4MpZEkEGhtNH+pwxZB8OKgUBPzYAGg==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+    dependencies:
+      '@types/react': 19.1.12
+      react: 19.1.1
     dev: false
