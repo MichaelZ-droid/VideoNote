@@ -20,15 +20,22 @@ export const loadFFmpeg = async (onProgress?: (progress: number) => void): Promi
     onProgress?.(percentage);
   });
 
-  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+  // 使用单线程版本（不需要 SharedArrayBuffer）
+  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
 
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-  });
+  try {
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
 
-  ffmpegInstance = ffmpeg;
-  return ffmpeg;
+    ffmpegInstance = ffmpeg;
+    console.log('FFmpeg 加载成功');
+    return ffmpeg;
+  } catch (error) {
+    console.error('FFmpeg 加载失败:', error);
+    throw new Error('音频提取功能初始化失败，请刷新页面重试');
+  }
 };
 
 export const extractAudioFromVideo = async (
