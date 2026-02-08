@@ -1,0 +1,20 @@
+-- 创建私有存储桶用于临时音频文件
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'temp-audio',
+  'temp-audio',
+  false,
+  104857600, -- 100MB 限制
+  ARRAY['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/aac', 'audio/m4a', 'audio/webm']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 允许所有用户上传（匿名用户也可以）
+CREATE POLICY "允许上传音频文件"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'temp-audio');
+
+-- 允许所有用户读取（用于后端函数访问）
+CREATE POLICY "允许读取音频文件"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'temp-audio');

@@ -1,0 +1,29 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="60" cy="60" r="58" fill="url(#gradient)" stroke="#3b82f6" stroke-width="2"/>
+  
+  <!-- Film Strip -->
+  <rect x="30" y="40" width="60" height="40" rx="4" fill="#0a0e17" stroke="#3b82f6" stroke-width="2"/>
+  
+  <!-- Film Holes -->
+  <circle cx="35" cy="50" r="2" fill="#3b82f6"/>
+  <circle cx="35" cy="60" r="2" fill="#3b82f6"/>
+  <circle cx="35" cy="70" r="2" fill="#3b82f6"/>
+  <circle cx="85" cy="50" r="2" fill="#3b82f6"/>
+  <circle cx="85" cy="60" r="2" fill="#3b82f6"/>
+  <circle cx="85" cy="70" r="2" fill="#3b82f6"/>
+  
+  <!-- Play Icon -->
+  <path d="M50 52L68 60L50 68V52Z" fill="#f5c842"/>
+  
+  <!-- Sparkle -->
+  <path d="M75 30L73 35L70 33L72 38L67 36L72 41L70 45L75 43L77 48L79 43L84 45L82 41L87 36L82 38L84 33L79 35L77 30L75 30Z" fill="#f5c842"/>
+  
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="120" y2="120">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+</svg>
